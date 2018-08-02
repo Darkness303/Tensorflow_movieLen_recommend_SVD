@@ -2,7 +2,7 @@
 from __future__ import absolute_import,division,print_function
 import numpy as np
 import pandas as pd
-def read_data_process(filename,sep="\t"):
+def read_data_and_process(filename,sep="\t"):
     col_names=["user","item","rate","st"]
     df=pd.read_csv(filename,sep=sep,header=None,names=col_names,engine="python")
     df["user"]-=1
@@ -23,17 +23,17 @@ class ShuffleDataIterator(object):
         self.batch_size=batch_size
         self.num_cols=len(self.inputs)
         self.len=len(self.inputs[0])
-        self.inputs=np.transpose(np.vstack([np.array(self.inputs[i]) for i in range(self)]))
+        self.inputs=np.transpose(np.vstack([np.array(self.inputs[i]) for i in range(self.num_cols)]))
     #总样本量
-    def _len_(self):
+    def __len__(self):
         return self
     def __iter__(self):
         return self
     #取出下一个batch
-    def _next_(self):
+    def __next__(self):
         return self.next()
     def next(self):
-        ids=np.random.randint(0,self.len,(self.batch_size))
+        ids=np.random.randint(0,self.len,(self.batch_size,))
         out=self.inputs[ids,:]
         return [out[:,i]for i in range(self.num_cols)]
 class OneEpochDataIterator(ShuffleDataIterator):
@@ -43,9 +43,10 @@ class OneEpochDataIterator(ShuffleDataIterator):
     def __init__(self,inputs,batch_size=10):
         super(OneEpochDataIterator,self).__init__(inputs,batch_size=batch_size)
         if batch_size>0:
-            self.idx_group=np.array_split(np.array(self.len),np.ceil(self.len/batch_size),)
+            self.idx_group=np.array_split(np.array(self.len),np.ceil(self.len/batch_size))
         else:
             self.idx_group=[np.arange(self.len)]
+        self.group_id=0
     def next(self):
         if self.group_id>=len(self.idx_group):
             self.group_id=0
